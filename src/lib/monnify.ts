@@ -77,7 +77,7 @@ export interface InvoiceState { status: string; amount: number; amountPaid: numb
 /** Polling fallback for the webhook. Returns null when Monnify can't confirm. */
 export async function getInvoiceState(reference: string): Promise<InvoiceState | null> {
   try {
-    const body = await call(`/api/v1/invoice/${encodeURIComponent(reference)}`);
+    const body = await call(`/api/v1/invoice/${encodeURIComponent(reference)}/details`);
     if (!body) return null;
     return {
       status: String(body.invoiceStatus || ""),
