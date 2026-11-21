@@ -49,8 +49,12 @@ export async function createDynamicInvoice(opts: {
   customerName: string; customerEmail: string; expiresAt: Date;
 }): Promise<DynamicAccount> {
   const p = (n: number) => String(n).padStart(2, "0");
-  const d = opts.expiresAt;
-  const expiryDate = `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}`;
+  // Monnify validates expiry against Africa/Lagos wall-clock time (verified live
+  // 2026-11-21: a UTC string is rejected as "Invalid invoice expiry date").
+  // Nigeria is UTC+1 year-round: shift the instant +1h and format with UTC
+  // getters so the result is Lagos time on any server timezone.
+  const d = new Date(opts.expiresAt.getTime() + 60 * 60_000);
+  const expiryDate = `${d.getUTCFullYear()}-${p(d.getUTCMonth() + 1)}-${p(d.getUTCDate())} ${p(d.getUTCHours())}:${p(d.getUTCMinutes())}:${p(d.getUTCSeconds())}`;
   const body = await call("/api/v1/invoice/create", {
     method: "POST",
     body: JSON.stringify({
