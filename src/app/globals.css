@@ -1,0 +1,18 @@
+@import "tailwindcss";
+
+@theme {
+  --color-paper: #071410;
+  --color-panel: #0d2019;
+  --color-panel2: #0a1a14;
+  --color-line: #1e3a2f;
+  --color-ink: #ecfdf5;
+  --color-inksoft: #b7d8c8;
+  --color-muted: #7fa695;
+  --color-accent: #22c55e;
+  --color-accentdeep: #15803d;
+  --color-warn: #fbbf24;
+  --color-bad: #f87171;
+}
+
+body { background: var(--color-paper); color: var(--color-ink); font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+input, select, button { font: inherit; }
