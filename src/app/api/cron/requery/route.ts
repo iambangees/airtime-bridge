@@ -3,9 +3,10 @@ import { listOrdersByStatus } from "@/lib/store";
 import { requeryOrder } from "@/lib/pipeline";
 
 
-/** Sweep stuck orders. Point any scheduler (e.g. cron-job.org, Vercel Cron via
-    vercel.json) at this every minute with Authorization: Bearer <CRON_SECRET>. */
-export async function POST(req: Request) {
+/** Sweep stuck orders. Vercel Cron (vercel.json) calls this with GET and sends
+    Authorization: Bearer <CRON_SECRET> automatically; any external scheduler
+    (e.g. cron-job.org) can POST with the same header. */
+async function sweep(req: Request) {
   const secret = process.env.CRON_SECRET || "";
   if (!secret || req.headers.get("authorization") !== `Bearer ${secret}`)
     return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
@@ -14,3 +15,6 @@ export async function POST(req: Request) {
   for (const o of stuck) { await requeryOrder(o.reference).catch(() => null); checked++; }
   return NextResponse.json({ ok: true, checked });
 }
+
+export async function GET(req: Request) { return sweep(req); }
+export async function POST(req: Request) { return sweep(req); }
