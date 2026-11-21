@@ -2,22 +2,29 @@
    POST /api/pay {request_id, serviceID, amount, phone}; POST /api/requery {request_id};
    GET /api/balance. Response code "000" = success, "099" = processing. */
 const BASE = process.env.VTPASS_BASE_URL || "https://sandbox.vtpass.com/api";
-const API_KEY = process.env.VTPASS_API_KEY || "";
-const SECRET_KEY = process.env.VTPASS_SECRET_KEY || "";
+const API_KEY = process.env.VTPASS_API_KEY || "";       // static API key (api-key header)
+const PUBLIC_KEY = process.env.VTPASS_PUBLIC_KEY || ""; // PK_... (GET requests)
+const SECRET_KEY = process.env.VTPASS_SECRET_KEY || ""; // SK_... (POST requests)
 const USERNAME = process.env.VTPASS_USERNAME || "";
 const PASSWORD = process.env.VTPASS_PASSWORD || "";
 
 export const vtpassConfigured = Boolean((API_KEY && SECRET_KEY) || (USERNAME && PASSWORD));
 
-function authHeaders(): Record<string, string> {
-  if (API_KEY && SECRET_KEY) return { "api-key": API_KEY, "secret-key": SECRET_KEY };
+/* VTpass auth (per their Authentication doc): every request carries the static
+   API key in `api-key`; POSTs add `secret-key`, GETs add `public-key`.
+   Basic auth (email:password) is the legacy fallback. */
+function authHeaders(method: "GET" | "POST"): Record<string, string> {
+  if (API_KEY && SECRET_KEY)
+    return method === "POST"
+      ? { "api-key": API_KEY, "secret-key": SECRET_KEY }
+      : { "api-key": API_KEY, "public-key": PUBLIC_KEY };
   return { Authorization: "Basic " + Buffer.from(`${USERNAME}:${PASSWORD}`).toString("base64") };
 }
 
 async function post(path: string, payload: Record<string, unknown>) {
   const res = await fetch(`${BASE}${path}`, {
     method: "POST",
-    headers: { ...authHeaders(), "Content-Type": "application/json" },
+    headers: { ...authHeaders("POST"), "Content-Type": "application/json" },
     body: JSON.stringify(payload),
   });
   const json = await res.json().catch(() => null);
@@ -53,7 +60,7 @@ export async function requeryVend(requestId: string): Promise<VendResult> {
 
 export async function getWalletBalance(): Promise<number | null> {
   try {
-    const res = await fetch(`${BASE}/balance`, { headers: authHeaders() });
+    const res = await fetch(`${BASE}/balance`, { headers: authHeaders("GET") });
     const json = await res.json().catch(() => null);
     const bal = Number(json?.contents?.balance ?? json?.balance);
     return Number.isFinite(bal) ? bal : null;
