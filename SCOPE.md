@@ -71,7 +71,7 @@ Every webhook is verified by signature and processed **idempotently** (the same 
 - **Phase 0 — Accounts:** Monnify + VTpass signups (his KYC steps), sandbox keys into the project env
 - **Phase 1 — Sandbox end-to-end:** create expiring account → test transfer → webhook → test vend. Proves the whole chain before any real money
 - **Phase 2 — The app:** order flow (number/network/amount → account + countdown → live status → delivered), order history, Supabase schema + RLS
-- **Phase 3 — Hardening:** requery job, vend retries, refund queue, admin view, abuse limits (per-number/per-day caps)
+- **Phase 3 — Hardening:** DONE 2026-11-21 — requery job, vend retries, refund queue + admin status endpoint (/api/admin/status, secret-protected), abuse limits (per-phone daily count/amount caps, global hourly cap), VTpass float guard before payment, low-balance email alert in the daily sweep (activates when RESEND_API_KEY + ALERT_EMAIL are set in Vercel)
 - **Phase 4 — Go live, personal:** real keys, small float, low caps, used only by him
 - **Phase 5 — Optional public launch:** only on a separate decision
 

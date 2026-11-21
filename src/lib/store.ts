@@ -75,3 +75,25 @@ export async function patchOrder(reference: string, patch: Partial<Order>): Prom
     .update({ ...patch, updated_at: new Date().toISOString() }).eq("reference", reference);
   if (error) throw new Error(`patchOrder: ${error.message}`);
 }
+
+/** Orders created for one phone since an ISO time (abuse caps). */
+export async function countOrdersForPhoneSince(phone: string, sinceIso: string): Promise<{ count: number; total: number }> {
+  const { data, error } = await db().from("orders").select("amount").eq("phone", phone).gte("created_at", sinceIso);
+  if (error) throw new Error(`countOrdersForPhoneSince: ${error.message}`);
+  const rows = (data ?? []) as { amount: number }[];
+  return { count: rows.length, total: rows.reduce((sum, r) => sum + (r.amount ?? 0), 0) };
+}
+
+/** All orders created since an ISO time (global caps). */
+export async function countOrdersSince(sinceIso: string): Promise<number> {
+  const { count, error } = await db().from("orders").select("id", { count: "exact", head: true }).gte("created_at", sinceIso);
+  if (error) throw new Error(`countOrdersSince: ${error.message}`);
+  return count ?? 0;
+}
+
+/** Recent orders for the admin status view. */
+export async function listRecentOrders(limit = 500): Promise<Order[]> {
+  const { data, error } = await db().from("orders").select("*").order("created_at", { ascending: false }).limit(limit);
+  if (error) throw new Error(`listRecentOrders: ${error.message}`);
+  return (data as Order[]) || [];
+}

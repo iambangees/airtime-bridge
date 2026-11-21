@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { listOrdersByStatus } from "@/lib/store";
 import { requeryOrder } from "@/lib/pipeline";
+import { getWalletBalance } from "@/lib/vtpass";
+import { checkFloatAndAlert } from "@/lib/alerts";
 
 
 /** Sweep stuck orders. Vercel Cron (vercel.json) calls this with GET and sends
@@ -13,7 +15,8 @@ async function sweep(req: Request) {
   const stuck = await listOrdersByStatus(["AWAITING_PAYMENT", "VENDING", "VEND_FAILED"], 25);
   let checked = 0;
   for (const o of stuck) { await requeryOrder(o.reference).catch(() => null); checked++; }
-  return NextResponse.json({ ok: true, checked });
+  const float = await checkFloatAndAlert(getWalletBalance).catch(() => ({ balance: null, alerted: false }));
+  return NextResponse.json({ ok: true, checked, float });
 }
 
 export async function GET(req: Request) { return sweep(req); }

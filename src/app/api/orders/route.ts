@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
 import { normalizePhone, detectNetwork, newOrderReference, newVtpassRequestId, NETWORK_NAMES } from "@/lib/core";
 import { createDynamicInvoice, monnifyConfigured } from "@/lib/monnify";
-import { vtpassConfigured } from "@/lib/vtpass";
-import { insertOrder, storeConfigured } from "@/lib/store";
+import { vtpassConfigured, getWalletBalance } from "@/lib/vtpass";
+import { insertOrder, storeConfigured, countOrdersForPhoneSince, countOrdersSince } from "@/lib/store";
 
 
 const MIN_AMOUNT = 50;
@@ -22,6 +22,20 @@ export async function POST(req: Request) {
   const amount = Math.floor(Number(body?.amount));
   if (!Number.isFinite(amount) || amount < MIN_AMOUNT || amount > MAX_AMOUNT)
     return NextResponse.json({ error: `Amount must be between ₦${MIN_AMOUNT} and ₦${MAX_AMOUNT}.` }, { status: 400 });
+
+  // Phase 3 hardening: abuse caps (per phone per day, global per hour) and a
+  // float guard — never take a payment the VTpass wallet cannot cover.
+  const dayAgo = new Date(Date.now() - 24 * 3600_000).toISOString();
+  const perPhone = await countOrdersForPhoneSince(phone, dayAgo).catch(() => ({ count: 0, total: 0 }));
+  if (perPhone.count >= Number(process.env.MAX_ORDERS_PER_PHONE_DAY || 10) ||
+      perPhone.total + amount > Number(process.env.MAX_AMOUNT_PER_PHONE_DAY || 20000))
+    return NextResponse.json({ error: "Daily limit reached for this phone number. Please try again tomorrow." }, { status: 429 });
+  const hourAgo = new Date(Date.now() - 3600_000).toISOString();
+  if ((await countOrdersSince(hourAgo).catch(() => 0)) >= Number(process.env.MAX_ORDERS_PER_HOUR || 60))
+    return NextResponse.json({ error: "The service is busy right now. Please try again shortly." }, { status: 429 });
+  const floatBalance = await getWalletBalance().catch(() => null);
+  if (floatBalance !== null && floatBalance < amount)
+    return NextResponse.json({ error: "Airtime is temporarily unavailable. Please try again later." }, { status: 503 });
 
   const reference = newOrderReference();
   const expiresAt = new Date(Date.now() + EXPIRY_MINUTES * 60 * 1000);
