@@ -39,7 +39,8 @@ export interface VendResult {
 
 function interpret(json: Record<string, unknown> | null): VendResult {
   const code = String(json?.code || "");
-  const tx = (json?.transactionId ?? json?.TransactionId ?? "") as string;
+  const nested = (json?.content as { transactions?: { transactionId?: unknown } } | undefined)?.transactions?.transactionId;
+  const tx = (nested ?? json?.transactionId ?? json?.TransactionId ?? "") as string;
   const msg = String(json?.response_description || "");
   if (code === "000") return { outcome: "delivered", code, transactionId: String(tx), message: msg };
   if (code === "099") return { outcome: "pending", code, transactionId: String(tx), message: msg };
